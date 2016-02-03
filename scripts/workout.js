@@ -6,8 +6,8 @@
 import config from '../config'
 
 module.exports = function(robot) {
+
   robot.respond(/test/i, function (res) {
-    console.log(config)
     res.send("I'm too fizzy..");
   });
 };
