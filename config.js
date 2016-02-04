@@ -1,72 +1,68 @@
-var extend = require('extend')
+var extend = require('extend');
 
 // Default Config
 var defaultConfig = {
-  channelId: "general",
+  room: "general",
 
   officeHours: {
-    "begin": 9,
-    "end": 17
+    begin: 9,
+    end: 17
    },
 
   callouts: {
     timeBetween: {
-      "minTime": 17,
-      "maxTime": 23,
-      "units": "minutes"
+      minTime: 17,
+      maxTime: 23,
+      units: "minutes"
     },
-    "numPeople": 3,
-    "slidingWindowSize": 8,
-    "groupCalloutChance": 0.05
+    numUsers: 3
   },
 
   exercises: [
     {
-      "id": 0,
-      "name": "pushups",
-      "minReps": 15,
-      "maxReps": 20,
-      "units": "rep"
+      slug: "pushup",
+      name: "pushups",
+      minReps: 15,
+      maxReps: 20
     },
     {
-      "id": 1,
-      "name": "planks",
-      "minReps": 40,
-      "maxReps": 60,
-      "units": "second"
+      slug: "plank",
+      name: "plank",
+      minReps: 40,
+      maxReps: 60,
+      units: "seconds"
     },
     {
-      "id": 2,
-      "name": "wall sit",
-      "minReps": 40,
-      "maxReps": 50,
-      "units": "second"
+      slug: "wall-sit",
+      name: "wall sit",
+      minReps: 40,
+      maxReps: 50,
+      units: "seconds"
     },
     {
-      "id": 3,
-      "name": "chair dips",
-      "minReps": 15,
-      "maxReps": 30,
-      "units": "rep"
+      id: "chair-dip",
+      name: "chair dips",
+      minReps: 15,
+      maxReps: 30
     },
     {
-      "id": 4,
-      "name": "calf raises",
-      "minReps": 20,
-      "maxReps": 30,
-      "units": "rep"
+      id: "calf-rise",
+      name: "calf raises",
+      minReps: 20,
+      maxReps: 30
     }
   ]
-}
+};
 
 
 // Overwrite defaults with Local Config
-var localConfig = extend({}, defaultConfig)
+var localConfig = extend({}, defaultConfig);
 try {
-  extend(true, localConfig, require('./config.local.js'))
-} catch (e) {}
+  extend(true, localConfig, require('./config.local.js'));
+} catch (e) {
+  console.log('Error while loading local config');
+}
 
 // Exports
-console.log('Loaded Config', localConfig)
-module.exports = localConfig
+module.exports = localConfig;
 
