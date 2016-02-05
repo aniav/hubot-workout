@@ -8,7 +8,6 @@ import config from '../config'
 
 var Random = require("random-js");
 var random = new Random(Random.engines.mt19937().autoSeed());
-var slack = require('hubot-slack');
 
 const TIMEOUT_KEY = "timeout";
 const TIME_MULTIPLIERS = new Map([
