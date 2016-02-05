@@ -189,6 +189,7 @@ module.exports = function(robot) {
   });
 
   robot.respond('/stats/i', function(res) {
-    robot.messageRoom(res.envelope.room, robot.brain.stats);
+    console.log(robot.brain.workoutRooms);
+    //robot.messageRoom(res.envelope.room, robot.brain.workoutRooms);
   });
 };
