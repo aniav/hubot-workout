@@ -1,62 +1,151 @@
-/* @flow */
 //  Description:
 //    Randomly pick an excercise to throw it to the users
 //  Author:
 //    aniav <anna.warzecha@gmail.com>
+/* @flow */
 
 import config from '../config'
 
-var getRandomIntInclusive = function(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+var Random = require("random-js");
+var random = new Random(Random.engines.mt19937().autoSeed());
+var slack = require('hubot-slack');
 
-var drawUsers = function(users, limit=3) {
-  // Draw only active users
-  let activeUsers = [];
-  Object.keys(users).forEach(id => {
-    let user = users[id];
-    if (user.id === 'USLACKBOT') return // slackbot doesn't identify as a bot
-    if (user.slack.is_bot === true) return
-    if (user.slack.deleted === true) return
-    if (user.slack.is_restricted === true) return
-    if (user.slack.presence !== 'active') return
+const TIMEOUT_KEY = "timeout";
+const TIME_MULTIPLIERS = new Map([
+  ["seconds", 1],
+  ["minutes", 60],
+  ["hours", 60 * 60],
+  ["days", 60 * 60 * 24]
+]);
 
-    activeUsers.push(user)
-  });
-
-  let selectedUsers = [];
-  for (var i = 1; i <= limit; i++) {
-    if (activeUsers.length < 1) break;
-
-    let selectedUserIndex = Math.floor(Math.random() * activeUsers.length);
-    selectedUsers.push(...activeUsers.splice(selectedUserIndex, 1));
-  }
-
-  return selectedUsers;
-}
 
 module.exports = function(robot) {
 
   /**
-  * Prepares the user stats Map for the scripts to use.
-  * @param {Array} users
-  * @return null
+  * Draws one exercise from the config file, randomizes the reps and adds units.
   *
-  * The state of the stats is preserved after bot shutdown.
+  * @return {[Number, Number, string]} [exercise, reps, units]
   */
-  robot._prepareStats = function() {
-    if (!robot.brain.stats) robot.brain.stats = new Map();
-    Object.keys(robot.brain.users()).forEach(userId => {
-      if (!robot.brain.stats.has(userId)) {
-        robot.brain.stats.set(userId, new Map());
-      }
-      let userStats = robot.brain.stats.get(userId);
-      config.exercises.forEach(exercise => {
-        if (userStats.has(exercise.slug)) return;
+  robot._drawExercise = function() {
+    let exercise = random.pick(config.exercises);
+    const reps = random.integer(exercise.minReps, exercise.maxReps)
+    const units = (exercise.units) ? ` ${exercise.units}` : '';
+    return [exercise, reps, units];
+  }
 
-        userStats.set(exercise.slug, 0);
-      });
+  /**
+  * Selects the users to perform an exercise
+  *
+  * @param {string} room
+  * @return {Array} selected users
+  */
+  robot._drawUsers = function(room) {
+    // Get users present in the room if the adapter accepts that
+    let client = robot.adapter.client;
+    let memberIds = client.getChannelGroupOrDMByName(room).members;
+
+    // Check if the user is active and therefore can be chosen
+    let users = [];
+    memberIds.forEach(id => {
+      let user = client.getUserByID(id);
+      if (!robot._isUserActive(user)) return
+
+      users.push(user);
     });
+
+    let limit = (config.callouts.numUsers <= users.length) ?
+                  config.callouts.numUsers : users.length;
+    return random.sample(users, limit);
+  }
+
+  /**
+  * Checks if the given user is active and can participate in the exercise
+  *
+  * @param {Object} user
+  * @return {boolean}
+  */
+  robot._isUserActive = function(user) {
+    // slackbot doesn't identify as a bot
+    if (user.id === 'USLACKBOT') return false;
+    if (user.is_bot === true) return false;
+    if (user.deleted === true) return false;
+    if (user.is_restricted === true) return false;
+    if (user.presence !== 'active') return false;
+
+    return true;
+  }
+
+  /**
+  * Prefills stats for a user with all of the exercises from config
+  *
+  * @param {Map} stats
+  * @return {Map} stats modified
+  */
+  robot._prefillExerciseStats = function() {
+    let stats = new Map();
+    config.exercises.forEach(exercise => {
+      if (stats.has(exercise.slug)) return;
+
+      stats.set(exercise.slug, 0);
+    });
+    return stats;
+  }
+
+  /**
+  * Runs the actual exercise, saves the stats and starts the counter for next
+  *
+  * @return null
+  */
+  robot._runExercise = function(room) {
+    let [exercise, reps, units] = robot._drawExercise();
+
+    let selectedUsers = robot._drawUsers(room);
+    let userNames = []
+    selectedUsers.forEach(user => {
+      //userNames.push(`@${user.name}`);
+      userNames.push(`${user.name}`);
+    });
+
+    robot.messageRoom(
+      room,
+      `${userNames.join(", ")} ${reps}${units} ${exercise.name} NOW!`
+    );
+
+    robot._saveRoomStats(room, selectedUsers, exercise, reps);
+    robot._setExerciseTimeout(room);
+  };
+
+  /**
+  * Saves the stats after users have been called to exercises.
+  *
+  * @param {Array} users
+  * @param {Object} exercise
+  * @param {Number} reps
+  * @return null
+  */
+  robot._saveRoomStats = function(room, users, exercise, reps) {
+    let roomStats = robot._getRoomStats(room);
+    users.forEach(user => {
+      if (!roomStats.has(user.id)) {
+        roomStats.set(user.id, robot._prefillExerciseStats());
+      }
+      let userStats = roomStats.get(user.id);
+      userStats.set(exercise.slug, userStats.get(exercise.slug) + reps);
+    });
+  };
+
+
+  robot._getRoomStats = function(room) {
+    if (!robot.brain.workoutRooms) robot.brain.workoutRooms = new Map();
+    if (!robot.brain.workoutRooms.has(room)) {
+      robot.brain.workoutRooms.set(room, new Map());
+    }
+    return robot.brain.workoutRooms.get(room);
+  }
+
+  robot._setRoomTimeout = function(room, timeout) {
+    let roomStats = robot._getRoomStats(room);
+    roomStats.set(TIMEOUT_KEY, timeout);
   }
 
   /**
@@ -75,88 +164,32 @@ module.exports = function(robot) {
   *
   * The above one is the default for this bot.
   */
-  robot._setExerciseTimeout = function() {
+  robot._setExerciseTimeout = function(room) {
     let timeConfig = config.callouts.timeBetween;
-    let multipliers = new Map([
-      ["seconds", 1],
-      ["minutes", 60],
-      ["hours", 60 * 60],
-      ["days", 60 * 60 * 24]
-    ]);
-    let time = getRandomIntInclusive(timeConfig.minTime, timeConfig.maxTime)
-    let multiplier = (multipliers.has(timeConfig.units)) ?
-                        multipliers.get(timeConfig.units) :
-                        multipliers.get('minutes');
 
-    robot.brain.timeoutId = setTimeout(function() {
-      robot._runExercise();
+    let time = random.integer(timeConfig.minTime, timeConfig.maxTime);
+    let multiplier = (TIME_MULTIPLIERS.has(timeConfig.units)) ?
+                        TIME_MULTIPLIERS.get(timeConfig.units) : 60;
+
+    let timeout = setTimeout(function() {
+      robot._runExercise(room);
     }, time * multiplier * 1000);
-  };
-
-  /**
-  * Saves the stats after users have been called to exercises.
-  *
-  * @param {Array} users
-  * @param {Object} exercise
-  * @param {Number} reps
-  * @return null
-  */
-  robot._saveStats = function(users, exercise, reps) {
-    users.forEach(user => {
-      let userActivity = robot.brain.stats.get(user.id);
-
-      if (!userActivity.has(exercise.slug)) {
-        userActivity.set(exercise.slug, reps)
-      } else {
-        userActivity[exercise.slug] += reps;
-      }
-
-      robot.brain.stats.set(user.id, userActivity);
-    });
-  };
-
-  /**
-  * Runs the actual exercise, saves the stats and starts the counter for next
-  *
-  * @return null
-  */
-  robot._runExercise = function() {
-    // Get exercises
-    let exercise = config.exercises[Math.floor(Math.random() * config.exercises.length)];
-    let reps = getRandomIntInclusive(exercise.minReps, exercise.maxReps);
-    let units = (exercise.units) ? ` ${exercise.units}` : '';
-
-    // Get users
-    let selectedUsers = drawUsers(robot.brain.users(), config.callouts.numUsers);
-    let userNames = []
-    selectedUsers.forEach(user => {
-      //userNames.push(`@${user.name}`);
-      userNames.push(`${user.name}`);
-    });
-
-    robot.messageRoom(
-      config.room,
-      `${userNames.join(", ")} ${reps}${units} ${exercise.name} NOW!`
-    );
-
-    robot._saveStats(selectedUsers, exercise, reps);
-    robot._setExerciseTimeout();
+    robot._setRoomTimeout(room, timeout);
+    robot.messageRoom(room, `Next workout starting in ${time} ${timeConfig.units}!`);
   };
 
   robot.respond('/start/i', function(res) {
-    robot._prepareStats(robot.brain.users());
-    robot._setExerciseTimeout();
-    robot.messageRoom(config.room,
-                      'Starting the Workout counters! 🏋');
+    robot.messageRoom(res.envelope.room, 'Starting the Workout counters! 🏋');
+    robot._setExerciseTimeout(res.envelope.room);
   });
 
   robot.respond('/stop/i', function(res) {
-    clearTimeout(robot.brain.timeoutId);
-    robot.messageRoom(config.room,
-                      'Stopping the Workout counters! 🛀');
+    let roomStats = robot._getRoomStats(res.envelope.room);
+    if (roomStats.has(TIMEOUT_KEY)) clearTimeout(roomStats.get(TIMEOUT_KEY));
+    robot.messageRoom(res.envelope.room, 'Stopping the Workout counters! 🛀');
   });
 
   robot.respond('/stats/i', function(res) {
-    res.send(robot.brain.stats);
+    robot.messageRoom(res.envelope.room, robot.brain.stats);
   });
 };

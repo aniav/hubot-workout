@@ -2,8 +2,6 @@ var extend = require('extend');
 
 // Default Config
 var defaultConfig = {
-  room: "general",
-
   officeHours: {
     begin: 9,
     end: 17
