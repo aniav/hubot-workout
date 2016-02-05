@@ -38,13 +38,13 @@ var defaultConfig = {
       units: "seconds"
     },
     {
-      id: "chair-dip",
+      slug: "chair-dip",
       name: "chair dips",
       minReps: 15,
       maxReps: 30
     },
     {
-      id: "calf-rise",
+      slug: "calf-rise",
       name: "calf raises",
       minReps: 20,
       maxReps: 30

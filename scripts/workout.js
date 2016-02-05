@@ -81,11 +81,11 @@ module.exports = function(robot) {
   * @return {Map} stats modified
   */
   robot._prefillExerciseStats = function() {
-    let stats = new Map();
+    let stats = {};
     config.exercises.forEach(exercise => {
-      if (stats.has(exercise.slug)) return;
+      if (stats.hasOwnProperty(exercise.slug)) return;
 
-      stats.set(exercise.slug, 0);
+      stats[exercise.slug] = 0;
     });
     return stats;
   }
@@ -101,8 +101,7 @@ module.exports = function(robot) {
     let selectedUsers = robot._drawUsers(room);
     let userNames = []
     selectedUsers.forEach(user => {
-      //userNames.push(`@${user.name}`);
-      userNames.push(`${user.name}`);
+      userNames.push(`@${user.name}`);
     });
 
     robot.messageRoom(
@@ -125,26 +124,29 @@ module.exports = function(robot) {
   robot._saveRoomStats = function(room, users, exercise, reps) {
     let roomStats = robot._getRoomStats(room);
     users.forEach(user => {
-      if (!roomStats.has(user.id)) {
-        roomStats.set(user.id, robot._prefillExerciseStats());
+      if (!roomStats.hasOwnProperty(user.id)) {
+        roomStats[user.id] = robot._prefillExerciseStats();
       }
-      let userStats = roomStats.get(user.id);
-      userStats.set(exercise.slug, userStats.get(exercise.slug) + reps);
+      let userStats = roomStats[user.id];
+      userStats[exercise.slug] += reps;
     });
+    // Tell brain to update itself
+    robot.brain.save()
   };
 
 
   robot._getRoomStats = function(room) {
-    if (!robot.brain.workoutRooms) robot.brain.workoutRooms = new Map();
-    if (!robot.brain.workoutRooms.has(room)) {
-      robot.brain.workoutRooms.set(room, new Map());
+    if (!robot.brain.get('workoutRooms')) robot.brain.set('workoutRooms', {});
+    let workoutRooms = robot.brain.get('workoutRooms');
+    if (!workoutRooms.hasOwnProperty(room)) {
+      workoutRooms[room] = {};
     }
-    return robot.brain.workoutRooms.get(room);
+    return workoutRooms[room];
   }
 
   robot._setRoomTimeout = function(room, timeout) {
     let roomStats = robot._getRoomStats(room);
-    roomStats.set(TIMEOUT_KEY, timeout);
+    roomStats[TIMEOUT_KEY] = timeout;
   }
 
   /**
@@ -184,12 +186,12 @@ module.exports = function(robot) {
 
   robot.respond('/stop/i', function(res) {
     let roomStats = robot._getRoomStats(res.envelope.room);
-    if (roomStats.has(TIMEOUT_KEY)) clearTimeout(roomStats.get(TIMEOUT_KEY));
+    if (roomStats.hasOwnProperty(TIMEOUT_KEY)) clearTimeout(roomStats[TIMEOUT_KEY]);
     robot.messageRoom(res.envelope.room, 'Stopping the Workout counters! 🛀');
   });
 
   robot.respond('/stats/i', function(res) {
-    console.log(robot.brain.workoutRooms);
+    console.log(robot.brain.get('workoutRooms'));
     //robot.messageRoom(res.envelope.room, robot.brain.workoutRooms);
   });
 };
