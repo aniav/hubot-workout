@@ -77,7 +77,6 @@ module.exports = function(robot) {
   /**
   * Prefills stats for a user with all of the exercises from config
   *
-  * @param {Map} stats
   * @return {Map} stats modified
   */
   robot._prefillExerciseStats = function() {
@@ -93,6 +92,7 @@ module.exports = function(robot) {
   /**
   * Runs the actual exercise, saves the stats and starts the counter for next
   *
+  * @param {string} room
   * @return null
   */
   robot._runExercise = function(room) {
@@ -116,6 +116,7 @@ module.exports = function(robot) {
   /**
   * Saves the stats after users have been called to exercises.
   *
+  * @param {string} room
   * @param {Array} users
   * @param {Object} exercise
   * @param {Number} reps
@@ -134,7 +135,12 @@ module.exports = function(robot) {
     robot.brain.save()
   };
 
-
+  /**
+  * Returns room statistice
+  *
+  * @param {string} room
+  * @return {Object} room stats
+  */
   robot._getRoomStats = function(room) {
     if (!robot.brain.get('workoutRooms')) robot.brain.set('workoutRooms', {});
     let workoutRooms = robot.brain.get('workoutRooms');
@@ -151,6 +157,7 @@ module.exports = function(robot) {
 
   /**
   * Sets the Exercise timeout based on the config file.
+  * @param {string} room
   * @return null
   *
   * The config should define a collouts Object with a structure similar to
