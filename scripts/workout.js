@@ -5,8 +5,9 @@
 /* @flow */
 
 import config from '../config'
+import Random from 'random-js'
+import moment from  'moment-business-time'
 
-var Random = require("random-js");
 var random = new Random(Random.engines.mt19937().autoSeed());
 
 const TIMEOUT_KEY = "timeout";
@@ -16,7 +17,6 @@ const TIME_MULTIPLIERS = new Map([
   ["hours", 60 * 60],
   ["days", 60 * 60 * 24]
 ]);
-
 
 module.exports = function(robot) {
 
@@ -179,14 +179,28 @@ module.exports = function(robot) {
     let multiplier = (TIME_MULTIPLIERS.has(timeConfig.units)) ?
                         TIME_MULTIPLIERS.get(timeConfig.units) : 60;
 
+    let nextExerciseTimeout = time * multiplier * 1000;
+    console.log('Next exercise starting in ')
+    let nextExerciseTime = moment().add(nextExerciseTimeout, 'seconds')
+    if (!nextExerciseTime.isWorkingTime()) {
+      nextExerciseTime = nextExerciseTime
+                            .nextWorkingTime()
+                            .add(nextExerciseTimeout, 'seconds');
+    }
+
     let timeout = setTimeout(function() {
       robot._runExercise(room);
-    }, time * multiplier * 1000);
+    }, nextExerciseTimeout);
     robot._setRoomTimeout(room, timeout);
     robot.messageRoom(room, `Next workout starting in ${time} ${timeConfig.units}!`);
   };
 
   robot.respond('/start/i', function(res) {
+    if ('locale' in robot.brain) {
+      moment.locale(robot.brain.locale);
+    } else if('locale' in config) {
+      moment.locale(config.locale);
+    }
     robot.messageRoom(res.envelope.room, 'Starting the Workout counters! 🏋');
     robot._setExerciseTimeout(res.envelope.room);
   });

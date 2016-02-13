@@ -2,11 +2,6 @@ var extend = require('extend');
 
 // Default Config
 var defaultConfig = {
-  officeHours: {
-    begin: 9,
-    end: 17
-   },
-
   callouts: {
     timeBetween: {
       minTime: 17,
@@ -58,7 +53,7 @@ var localConfig = extend({}, defaultConfig);
 try {
   extend(true, localConfig, require('./config.local.js'));
 } catch (e) {
-  console.log('Error while loading local config');
+  console.log('Local config not loaded.');
 }
 
 // Exports

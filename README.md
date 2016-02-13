@@ -12,6 +12,21 @@ Currently implemented
 * starting/stoping the bot by writing to him on a channel
 * drawing users from a channel he has been started on (choosing only from active, full members will)
 * saving statistics of workouts for specific channels
+* drawing exercises only in working days and working hours
+
+Running
+------
+
+To run the bot you need to provide the slack token:
+```
+HUBOT_SLACK_TOKEN=your_slack_token bin/hubot --adapter slack
+```
+
+The workouts will not start automatically, you need to invite hubot to a
+channel and tell him to start the counters. Stoping him is also done with a command.
+
+![Hubot starting & stoping](https://cloud.githubusercontent.com/assets/182546/13026783/7fb914a6-d234-11e5-8bdf-44b09dc2141c.png)
+
 
 History
 -------
