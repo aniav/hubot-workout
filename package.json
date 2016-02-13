@@ -18,12 +18,21 @@
     "hubot-maps": "0.0.2",
     "hubot-pugme": "^0.1.0",
     "hubot-redis-brain": "0.0.3",
+    "hubot-reload-scripts": "^0.1.2",
     "hubot-rules": "^0.1.1",
     "hubot-scripts": "^2.16.2",
     "hubot-shipit": "^0.2.0",
-    "hubot-slack": "^3.4.2"
+    "hubot-slack": "^3.4.2",
+    "random-js": "^1.0.8"
   },
   "engines": {
     "node": "0.10.x"
+  },
+  "devDependencies": {
+    "babel-eslint": "^4.1.8",
+    "eslint": "^1.10.3"
+  },
+  "scripts": {
+    "lint": "eslint src"
   }
 }

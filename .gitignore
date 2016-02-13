@@ -1,4 +1,5 @@
 node_modules
 .DS_Store*
 .hubot_history
-config.json
+config.local.js
+out
