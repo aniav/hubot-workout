@@ -10,6 +10,7 @@ import moment from  'moment-business-time'
 
 var random = new Random(Random.engines.mt19937().autoSeed());
 
+const DATE_FORMAT = "dddd, MMMM Do YYYY, h:mm:ss a";
 const TIMEOUT_KEY = "timeout";
 const TIME_MULTIPLIERS = new Map([
   ["seconds", 1],
@@ -173,34 +174,43 @@ module.exports = function(robot) {
   * The above one is the default for this bot.
   */
   robot._setExerciseTimeout = function(room) {
-    let timeConfig = config.callouts.timeBetween;
+    let timeConfig = robot.brain.get('config').callouts.timeBetween;
 
-    let time = random.integer(timeConfig.minTime, timeConfig.maxTime);
+    let offset = random.integer(timeConfig.minTime, timeConfig.maxTime);
     let multiplier = (TIME_MULTIPLIERS.has(timeConfig.units)) ?
                         TIME_MULTIPLIERS.get(timeConfig.units) : 60;
 
-    let nextExerciseTimeout = time * multiplier * 1000;
-    console.log('Next exercise starting in ')
-    let nextExerciseTime = moment().add(nextExerciseTimeout, 'seconds')
-    if (!nextExerciseTime.isWorkingTime()) {
-      nextExerciseTime = nextExerciseTime
-                            .nextWorkingTime()
-                            .add(nextExerciseTimeout, 'seconds');
-    }
-
+    let nextExerciseTime = moment().addWorkingTime(offset, timeConfig.units);
+    let nextExerciseTimeout = nextExerciseTime.diff(moment(), 'milliseconds');
     let timeout = setTimeout(function() {
       robot._runExercise(room);
     }, nextExerciseTimeout);
     robot._setRoomTimeout(room, timeout);
-    robot.messageRoom(room, `Next workout starting in ${time} ${timeConfig.units}!`);
+
+
+    let message = `Next workout starting `;
+    if (nextExerciseTime.diff(moment(), 'days') === 0) {
+      message += `in ${time} ${timeConfig.units}!`;
+    } else {
+      message += `on ${nextExerciseTime.format(DATE_FORMAT)}`;
+    }
+    robot.messageRoom(room, message);
   };
 
-  robot.respond('/start/i', function(res) {
-    if ('locale' in robot.brain) {
-      moment.locale(robot.brain.locale);
-    } else if('locale' in config) {
-      moment.locale(config.locale);
+
+  robot._configureBot = function() {
+    if (!robot.brain.get('config')) {
+      robot.brain.set('config', Object.assign({}, config));
     }
+    let robot_config = robot.brain.get('config');
+    if('locale' in robot_config) {
+      moment.locale(robot.brain.config.locale);
+    }
+  }
+
+
+  robot.respond('/start/i', function(res) {
+    robot._configureBot();
     robot.messageRoom(res.envelope.room, 'Starting the Workout counters! 🏋');
     robot._setExerciseTimeout(res.envelope.room);
   });
