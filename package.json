@@ -1,6 +1,6 @@
 {
   "name": "hubot-workout",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "author": "Anna Warzecha <anna.warzecha@gmail.com>",
   "description": "A robot encouraging you to work out",
