@@ -23,6 +23,7 @@
     "hubot-scripts": "^2.16.2",
     "hubot-shipit": "^0.2.0",
     "hubot-slack": "^3.4.2",
+    "moment-business-time": "^0.3.1",
     "random-js": "^1.0.8"
   },
   "engines": {
